@@ -102,6 +102,7 @@ func (c *ControllerV1) CronLogList(ctx context.Context, req *api.CronLogListReq)
 		result.PageRes = form.PageRes{
 			Page:     req.Page,
 			PageSize: req.PageSize,
+			Total:    result.Total,
 		}
 	}
 	return

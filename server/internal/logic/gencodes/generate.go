@@ -1962,8 +1962,11 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 
 	content := gfile.GetContents(moduleFile)
 	changed := false
+	var actions []string
 
 	// 添加 logic 包空导入
+	// 优先插在已有空导入（_ "..."）之后；手写 module.go 可能没有空导入行，
+	// 此时兜底插到 import ( 之后，避免静默丢失导致运行时 service 未注册 panic
 	logicImport := fmt.Sprintf(`_ "xygo/addons/%s/logic/%s"`, addonName, data.PkgName)
 	if !strings.Contains(content, logicImport) {
 		lines := strings.Split(content, "\n")
@@ -1974,6 +1977,14 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 				insertIdx = i + 1
 			}
 		}
+		if insertIdx == 0 {
+			for i, line := range lines {
+				if strings.TrimSpace(line) == "import (" {
+					insertIdx = i + 1
+					break
+				}
+			}
+		}
 		if insertIdx > 0 {
 			newLine := "\t" + logicImport
 			newLines := make([]string, 0, len(lines)+1)
@@ -1982,6 +1993,10 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 			newLines = append(newLines, lines[insertIdx:]...)
 			content = strings.Join(newLines, "\n")
 			changed = true
+			actions = append(actions, "logic import")
+		} else {
+			g.Log().Warningf(ctx,
+				"[AddonSupport] cannot locate import block in module.go, please add %s manually", logicImport)
 		}
 	}
 
@@ -1998,6 +2013,7 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 				newLines = append(newLines, lines[i+1:]...)
 				content = strings.Join(newLines, "\n")
 				changed = true
+				actions = append(actions, "controller import")
 				break
 			}
 		}
@@ -2014,6 +2030,7 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 		if strings.Contains(content, p[0]) {
 			content = strings.Replace(content, p[0], p[1], 1)
 			changed = true
+			actions = append(actions, "controller binding")
 		}
 	}
 
@@ -2021,7 +2038,7 @@ func updateAddonModule(ctx context.Context, addonDir, addonName string, data *Tp
 		if err := os.WriteFile(moduleFile, []byte(content), 0644); err != nil {
 			g.Log().Warningf(ctx, "[AddonSupport] write module.go error: %v", err)
 		} else {
-			g.Log().Info(ctx, "[AddonSupport] updated module.go with logic import and controller binding")
+			g.Log().Infof(ctx, "[AddonSupport] updated module.go: %s", strings.Join(actions, ", "))
 		}
 	}
 }

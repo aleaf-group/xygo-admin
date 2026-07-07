@@ -24,6 +24,15 @@ func NewAdminMember() *sAdminMember {
 
 type sAdminMember struct{}
 
+// emptyToNil 唯一列(如手机号)为空时返回 nil，写入数据库 NULL，
+// 避免多个空字符串触发 uk_mobile 唯一索引冲突（NULL 不参与唯一约束）
+func emptyToNil(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
 // List 会员列表
 func (s *sAdminMember) List(ctx context.Context, in *adminin.MemberListInp) (list []adminin.MemberItem, total int, err error) {
 	m := dao.Member.Ctx(ctx)
@@ -193,7 +202,7 @@ func (s *sAdminMember) Add(ctx context.Context, in *adminin.MemberAddInp) (out *
 		"password":   gmd5.MustEncryptString(in.Password + salt),
 		"salt":       salt,
 		"nickname":   in.Nickname,
-		"mobile":     in.Mobile,
+		"mobile":     emptyToNil(in.Mobile),
 		"email":      in.Email,
 		"avatar":     in.Avatar,
 		"gender":     in.Gender,
@@ -259,7 +268,7 @@ func (s *sAdminMember) Edit(ctx context.Context, in *adminin.MemberEditInp) (err
 	if in.Nickname != "" {
 		data["nickname"] = in.Nickname
 	}
-	data["mobile"] = in.Mobile
+	data["mobile"] = emptyToNil(in.Mobile)
 	data["email"] = in.Email
 	data["avatar"] = in.Avatar
 	data["gender"] = in.Gender

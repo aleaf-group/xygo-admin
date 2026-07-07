@@ -2262,7 +2262,7 @@ CREATE TABLE public.xy_member (
     username character varying(32) DEFAULT ''::character varying NOT NULL,
     password character varying(128) DEFAULT ''::character varying NOT NULL,
     salt character varying(10) DEFAULT ''::character varying NOT NULL,
-    mobile character varying(20) DEFAULT ''::character varying NOT NULL,
+    mobile character varying(20),
     email character varying(64) DEFAULT ''::character varying NOT NULL,
     nickname character varying(64) DEFAULT ''::character varying NOT NULL,
     avatar character varying(255) DEFAULT ''::character varying NOT NULL,
@@ -5304,7 +5304,7 @@ INSERT INTO public.xy_demo_category (id, parent_id, name, icon, sort, status, re
 -- Data for Name: xy_member; Type: TABLE DATA; Schema: xygonew; Owner: -
 --
 
-INSERT INTO public.xy_member (id, username, password, salt, mobile, email, nickname, avatar, gender, birthday, money, score, level, group_id, status, last_login_ip, last_login_at, login_count, created_at, updated_at, deleted_at) VALUES (1, 'user', '4c0648b0fe19879ee68a5a08899e2296', 'jf8gU6', '', '751300685@qq.com', '751300685', '/attachment/upload/20260212/cc679f09-57e9-4c35-9054-65e4afde8cd3.png', 0, NULL, 0.00, 11, 1, 1, 1, '127.0.0.1', 1770909732, 11, 1770908432, 1770913381, 0);
+INSERT INTO public.xy_member (id, username, password, salt, mobile, email, nickname, avatar, gender, birthday, money, score, level, group_id, status, last_login_ip, last_login_at, login_count, created_at, updated_at, deleted_at) VALUES (1, 'user', '4c0648b0fe19879ee68a5a08899e2296', 'jf8gU6', NULL, '751300685@qq.com', '751300685', '/attachment/upload/20260212/cc679f09-57e9-4c35-9054-65e4afde8cd3.png', 0, NULL, 0.00, 11, 1, 1, 1, '127.0.0.1', 1770909732, 11, 1770908432, 1770913381, 0);
 
 
 --
@@ -6070,6 +6070,14 @@ ALTER TABLE ONLY public.xy_demo_category
 
 ALTER TABLE ONLY public.xy_member
     ADD CONSTRAINT idx_17331_primary PRIMARY KEY (id);
+
+
+--
+-- Name: uk_member_mobile; Type: INDEX; Schema: xygonew; Owner: -
+-- 手机号唯一索引（PostgreSQL 唯一索引允许多个 NULL，空手机号不冲突）
+--
+
+CREATE UNIQUE INDEX uk_member_mobile ON public.xy_member USING btree (mobile);
 
 
 --

@@ -335,6 +335,9 @@ func LogClear(ctx context.Context, in *adminin.CronLogClearInp) error {
 	m := dao.SysCronLog.Ctx(ctx)
 	if in.CronId > 0 {
 		m = m.Where("cron_id", in.CronId)
+	} else {
+		// GoFrame 不允许无 WHERE 条件的 Delete，清空全部时补一个恒真条件
+		m = m.Where("1=1")
 	}
 	_, err := m.Delete()
 	return err
