@@ -220,8 +220,8 @@
 </template>
 
 <script setup lang="ts">
-  import { useChatStore } from '@/stores/backend/chat'
-  import { useUserStore } from '@/stores/backend/user'
+  import { useChatStore } from '@/store/modules/chat'
+  import { useUserStore } from '@/store/modules/user'
   import { useAutoLayoutHeight } from '@/hooks/core/useLayoutHeight'
   import { fetchGetDeptList } from '@/api/backend/system/dept'
   import type { ChatSessionItem, ChatContactItem } from '@/api/backend/system/chat'

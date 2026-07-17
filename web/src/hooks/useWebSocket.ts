@@ -17,7 +17,7 @@
  */
 import { onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useWebSocketStore } from '@/stores/backend/websocket'
+import { useWebSocketStore } from '@/store/modules/websocket'
 
 export function useWebSocket() {
   const wsStore = useWebSocketStore()

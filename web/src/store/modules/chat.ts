@@ -28,8 +28,8 @@ import {
   type ChatMessageItem,
   type ChatContactItem,
 } from '@/api/backend/system/chat'
-import { useWebSocketStore } from '@/stores/backend/websocket'
-import { useUserStore } from '@/stores/backend/user'
+import { useWebSocketStore } from '@/store/modules/websocket'
+import { useUserStore } from '@/store/modules/user'
 
 export const useChatStore = defineStore('chat', () => {
   // ==================== 状态 ====================

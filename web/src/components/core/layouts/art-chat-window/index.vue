@@ -327,8 +327,8 @@
 <script setup lang="ts">
   import { Close, ArrowLeft, Search, Loading } from '@element-plus/icons-vue'
   import { mittBus } from '@/utils/sys'
-  import { useChatStore } from '@/stores/backend/chat'
-  import { useUserStore } from '@/stores/backend/user'
+  import { useChatStore } from '@/store/modules/chat'
+  import { useUserStore } from '@/store/modules/user'
   import { uploadImageApi } from '@/api/backend/common/upload'
   import { fetchGetDeptList } from '@/api/backend/system/dept'
   import type { ChatContactItem, ChatSessionItem } from '@/api/backend/system/chat'

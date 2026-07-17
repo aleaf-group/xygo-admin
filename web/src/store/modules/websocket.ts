@@ -21,7 +21,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import { ElNotification } from 'element-plus'
 import WebSocketClient from '@/utils/socket'
-import { useUserStore } from './user'
+import { useUserStore } from '@/store/modules/user'
 
 // WebSocket 消息类型
 export interface WsMessage {

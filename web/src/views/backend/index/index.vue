@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
   import { onMounted, onUnmounted } from 'vue'
-  import { useWebSocketStore } from '@/stores/backend/websocket'
+  import { useWebSocketStore } from '@/store/modules/websocket'
 
   defineOptions({ name: 'AppLayout' })
 

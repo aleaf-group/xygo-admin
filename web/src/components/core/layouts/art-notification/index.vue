@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-  import { useNotificationStore } from '@/stores/backend/notification'
+  import { useNotificationStore } from '@/store/modules/notification'
   import { ADMIN_BASE_PATH } from '@/router/routesAlias'
 
   defineOptions({ name: 'ArtNotification' })

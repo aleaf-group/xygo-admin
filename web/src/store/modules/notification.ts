@@ -13,6 +13,7 @@
  * 管理站内通知、公告、私信的状态
  */
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import {
   fetchNoticePull,
   fetchNoticeUnreadCount,
@@ -21,7 +22,7 @@ import {
   type MessageItem,
   type UnreadCountItem,
 } from '@/api/backend/system/notice'
-import { useWebSocketStore } from '@/stores/backend/websocket'
+import { useWebSocketStore } from '@/store/modules/websocket'
 
 export const useNotificationStore = defineStore('notification', () => {
   // 消息列表
