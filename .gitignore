@@ -1,5 +1,8 @@
 .cursor/
 
+# 前端构建产物（发版/打包时 cd web && pnpm build 生成，不入库）
+server/resource/public/dist/
+
 *.exe
 *.exe~
 node_modules/
