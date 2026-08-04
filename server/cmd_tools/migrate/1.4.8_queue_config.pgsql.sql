@@ -25,7 +25,7 @@ ON CONFLICT (topic) DO UPDATE SET updated_at = EXTRACT(EPOCH FROM NOW())::bigint
 
 UPDATE public.xy_admin_menu SET perms = '["GET /admin/queue/stats","GET /admin/queue/topics"]' WHERE id = 250;
 
-INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, icon, is_frame, is_cache, redirect, query, perms, always_show, breadcrumb, affix, active_menu, redirect_name, hidden, sort, status, remark, created_by, updated_by, created_at, updated_at) VALUES
-(812, 250, 3, '查看', 'view', '', '', '', 0, 0, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, EXTRACT(EPOCH FROM NOW())::bigint, EXTRACT(EPOCH FROM NOW())::bigint),
-(813, 250, 3, '编辑配置', 'edit', '', '', '', 0, 0, '', '', '["POST /admin/queue/configSave"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, EXTRACT(EPOCH FROM NOW())::bigint, EXTRACT(EPOCH FROM NOW())::bigint)
-ON CONFLICT (id) DO UPDATE SET perms = EXCLUDED.perms, updated_at = EXTRACT(EPOCH FROM NOW())::bigint;
+INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES
+(812, 250, 3, '查看', 'view', '', '', '', '', 0, 0, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, EXTRACT(EPOCH FROM NOW())::integer, EXTRACT(EPOCH FROM NOW())::integer),
+(813, 250, 3, '编辑配置', 'edit', '', '', '', '', 0, 0, '', '', '["POST /admin/queue/configSave"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, EXTRACT(EPOCH FROM NOW())::integer, EXTRACT(EPOCH FROM NOW())::integer)
+ON CONFLICT (id) DO UPDATE SET perms = EXCLUDED.perms, update_time = EXTRACT(EPOCH FROM NOW())::integer;

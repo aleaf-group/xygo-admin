@@ -25,7 +25,7 @@ ON DUPLICATE KEY UPDATE `updated_at` = UNIX_TIMESTAMP();
 
 UPDATE `xy_admin_menu` SET `perms` = '["GET /admin/queue/stats","GET /admin/queue/topics"]' WHERE `id` = 250;
 
-INSERT INTO `xy_admin_menu` (`id`, `parent_id`, `type`, `title`, `name`, `path`, `component`, `icon`, `is_frame`, `is_cache`, `redirect`, `query`, `perms`, `always_show`, `breadcrumb`, `affix`, `active_menu`, `redirect_name`, `hidden`, `sort`, `status`, `remark`, `created_by`, `updated_by`, `created_at`, `updated_at`) VALUES
-(812, 250, 3, '查看', 'view', '', '', '', 0, 0, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-(813, 250, 3, '编辑配置', 'edit', '', '', '', 0, 0, '', '', '["POST /admin/queue/configSave"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
-ON DUPLICATE KEY UPDATE `perms` = VALUES(`perms`), `updated_at` = UNIX_TIMESTAMP();
+INSERT INTO `xy_admin_menu` (`id`, `parent_id`, `type`, `title`, `name`, `path`, `component`, `resource`, `icon`, `hidden`, `keep_alive`, `redirect`, `frame_src`, `perms`, `is_frame`, `affix`, `show_badge`, `badge_text`, `active_path`, `hide_tab`, `is_full_page`, `sort`, `status`, `remark`, `created_by`, `updated_by`, `create_time`, `update_time`) VALUES
+(812, 250, 3, '查看', 'view', '', '', '', '', 0, 0, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+(813, 250, 3, '编辑配置', 'edit', '', '', '', '', 0, 0, '', '', '["POST /admin/queue/configSave"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `perms` = VALUES(`perms`), `update_time` = UNIX_TIMESTAMP();
