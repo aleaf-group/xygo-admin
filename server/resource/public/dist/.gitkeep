@@ -1,0 +1,4 @@
+﻿# 占位文件：保证克隆后 dist 目录存在，避免 SetServerRoot 因目录缺失而 FATAL。
+# 前端构建产物（index.html / assets）不入库，请执行：
+#   cd web && pnpm install && pnpm build
+# 开发模式也可仅运行 pnpm dev，后端 API 独立在 server/ 端口提供。

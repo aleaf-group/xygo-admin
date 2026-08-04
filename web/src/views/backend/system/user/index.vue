@@ -159,6 +159,24 @@
           }
         },
         {
+          prop: 'isOnline',
+          label: '在线',
+          width: 80,
+          align: 'center',
+          formatter: (row: UserListItem) => {
+            return h('div', { class: 'inline-flex items-center gap-1.5' }, [
+              h('span', {
+                class: row.isOnline
+                  ? 'inline-block h-2 w-2 rounded-full bg-success'
+                  : 'inline-block h-2 w-2 rounded-full bg-g-300'
+              }),
+              h('span', {
+                class: row.isOnline ? 'text-success text-xs' : 'text-g-500 text-xs'
+              }, row.isOnline ? '在线' : '离线')
+            ])
+          }
+        },
+        {
           prop: 'status',
           label: '状态',
           width: 80,

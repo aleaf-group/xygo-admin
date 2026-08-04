@@ -101,6 +101,32 @@ XYGo Admin 是一款全栈开源中后台管理框架，前端基于 [Art Design
 
 详细安装步骤请查阅 **[📖 官方文档](https://www.xygoadmin.com/docs)**。
 
+**克隆后本地开发（推荐）**
+
+```bash
+# 1. 数据库：导入 mysql_install.sql 或 pgsql_install.sql，配置 server/manifest/config/config.yaml
+
+# 2. 后端 API（默认 :4096；develop 模式下 dist 未构建也可启动）
+cd server
+go run main.go
+
+# 3. 前端 dev 服务（另开终端，默认 :3006，代理 API）
+cd web
+pnpm install
+pnpm dev
+```
+
+浏览器访问前端 dev 地址（如 `http://localhost:3006`）。**不要**在未执行 `pnpm build` 的情况下指望 `:4096` 直接打开完整页面。
+
+**单体部署（前后端同一端口）**
+
+```bash
+cd web && pnpm install && pnpm build   # 产物输出到 server/resource/public/dist
+cd ../server && go run main.go         # 访问 http://localhost:4096
+```
+
+> `server/resource/public/dist/` 构建产物不入库，目录内仅有 `.gitkeep` 占位；生产模式（`system.mode: product`）缺少 `index.html` 时会拒绝启动并提示先 build。
+
 **默认账号**
 
 | 角色 | 账号 | 密码 |

@@ -139,6 +139,7 @@ declare namespace Api {
       update_time: number    // 后端：update_time (Unix时间戳)
       roles: string[]        // 后端：roles（角色标识）
       roleNames: string[]    // 后端：roleNames（角色名称）
+      isOnline: boolean      // 后端：isOnline（WebSocket 在线）
     }
 
     /** 用户搜索参数 */

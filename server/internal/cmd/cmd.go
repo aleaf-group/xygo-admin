@@ -36,6 +36,35 @@ import (
 	"xygo/internal/websocket"
 )
 
+const (
+	frontendDistRoot  = "resource/public/dist"
+	frontendIndexFile = frontendDistRoot + "/index.html"
+)
+
+// mountFrontendStatic 挂载前端静态资源目录。
+// develop：dist 未构建时跳过或仅挂载空目录并告警，不阻断 API 开发。
+// product：必须有 index.html，否则拒绝启动并提示 pnpm build。
+func mountFrontendStatic(ctx context.Context, s *ghttp.Server) {
+	isDevelop := g.Cfg().MustGet(ctx, "system.mode", "develop").String() == "develop"
+	hasIndex := gres.Contains(frontendIndexFile) || gfile.Exists(frontendIndexFile)
+	hasDistDir := gres.Contains(frontendDistRoot) || gfile.IsDir(frontendDistRoot)
+
+	switch {
+	case hasIndex:
+		s.SetServerRoot(frontendDistRoot)
+	case isDevelop:
+		if hasDistDir {
+			s.SetServerRoot(frontendDistRoot)
+		}
+		g.Log().Warning(ctx, "前端 dist 未构建（缺少 index.html）；开发请另开终端执行 cd web && pnpm dev，"+
+			"单体访问请先 cd web && pnpm build")
+	case hasDistDir:
+		g.Log().Fatalf(ctx, "生产模式缺少前端入口 %s，请先执行: cd web && pnpm install && pnpm build", frontendIndexFile)
+	default:
+		g.Log().Fatalf(ctx, "缺少前端目录 %s，请先执行: cd web && pnpm install && pnpm build", frontendDistRoot)
+	}
+}
+
 var (
 	Main = gcmd.Command{
 		Name:  "main",
@@ -65,8 +94,8 @@ var (
 			// s.BindHandler("GET:/", site.PageIndex)
 			// site.RegisterNavRoutes(s)
 
-			// 静态文件服务
-			s.SetServerRoot("resource/public/dist")
+			// 静态文件服务（develop 未 build 时不 FATAL，见 mountFrontendStatic）
+			mountFrontendStatic(ctx, s)
 			// s.SetIndexFiles([]string{}) // 纯 HTML 模式时禁用，现已恢复 SPA 默认
 			s.AddStaticPath("/attachment", "resource/public/attachment")
 			s.AddStaticPath("/m", "resource/public/mobile")
@@ -76,7 +105,7 @@ var (
 			s.BindStatusHandler(http.StatusNotFound, func(r *ghttp.Request) {
 				path := r.RequestURI
 				if strings.HasPrefix(path, "/admin") {
-					indexPath := "resource/public/dist/index.html"
+					indexPath := frontendIndexFile
 					r.Response.ClearBuffer()
 					r.Response.Header().Set("Content-Type", "text/html; charset=utf-8")
 					var content string

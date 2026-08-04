@@ -101,6 +101,32 @@ XYGo Admin is a full-stack open-source admin framework. The frontend is based on
 
 For detailed installation instructions, please refer to the **[📖 Official Documentation](https://www.xygoadmin.com/docs)**.
 
+**Local development (recommended)**
+
+```bash
+# 1. Import mysql_install.sql or pgsql_install.sql; configure server/manifest/config/config.yaml
+
+# 2. Backend API (default :4096; starts in develop mode even without a frontend build)
+cd server
+go run main.go
+
+# 3. Frontend dev server (separate terminal, default :3006, proxies API)
+cd web
+pnpm install
+pnpm dev
+```
+
+Open the Vite dev URL (e.g. `http://localhost:3006`). Do not expect a full UI on `:4096` until you run `pnpm build`.
+
+**Single-port deployment**
+
+```bash
+cd web && pnpm install && pnpm build   # output → server/resource/public/dist
+cd ../server && go run main.go         # visit http://localhost:4096
+```
+
+> Built frontend assets are not committed; only `.gitkeep` is tracked under `dist/`. In `system.mode: product`, the server refuses to start without `index.html`.
+
 **Default Account**
 
 | Role | Username | Password |

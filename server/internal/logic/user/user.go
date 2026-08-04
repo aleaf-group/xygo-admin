@@ -21,6 +21,7 @@ import (
 	"xygo/internal/model/entity"
 	"xygo/internal/model/input/adminin"
 	"xygo/internal/service"
+	"xygo/internal/websocket"
 )
 
 type sAdminUser struct{}
@@ -130,6 +131,7 @@ func (s *sAdminUser) List(ctx context.Context, in *adminin.UserListInp) (list []
 		if records[i].Email != "" {
 			records[i].Email = security.MaskEmail(records[i].Email)
 		}
+		records[i].IsOnline = websocket.IsUserOnline("admin", uint64(records[i].Id))
 	}
 
 	return records, count, nil

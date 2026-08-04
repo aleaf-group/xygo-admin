@@ -21,7 +21,7 @@ export const exceptionRoutes: AppRouteRecord = {
   children: [
     {
       path: '403',
-      name: 'Exception403',
+      name: 'AdminException403',
       component: '/common/exception/403',
       meta: {
         title: 'menus.exception.forbidden',
@@ -32,7 +32,7 @@ export const exceptionRoutes: AppRouteRecord = {
     },
     {
       path: '404',
-      name: 'Exception404',
+      name: 'AdminException404',
       component: '/common/exception/404',
       meta: {
         title: 'menus.exception.notFound',
@@ -43,7 +43,7 @@ export const exceptionRoutes: AppRouteRecord = {
     },
     {
       path: '500',
-      name: 'Exception500',
+      name: 'AdminException500',
       component: '/common/exception/500',
       meta: {
         title: 'menus.exception.serverError',

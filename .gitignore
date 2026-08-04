@@ -1,7 +1,8 @@
 .cursor/
 
-# 前端构建产物（发版/打包时 cd web && pnpm build 生成，不入库）
-server/resource/public/dist/
+# 前端构建产物（发版/打包时 cd web && pnpm build 生成，不入库；保留 .gitkeep 占位目录）
+server/resource/public/dist/*
+!server/resource/public/dist/.gitkeep
 
 *.exe
 *.exe~

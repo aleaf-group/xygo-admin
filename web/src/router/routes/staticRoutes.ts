@@ -82,6 +82,12 @@ export const staticRoutes: AppRouteRecordRaw[] = [
     ]
   },
 
+  // /admin 入口：无论动态路由是否已注册，都先落到默认首页
+  {
+    path: `${ADMIN_BASE_PATH}`,
+    redirect: `${ADMIN_BASE_PATH}/dashboard/console`
+  },
+
   // ===== 全局 404 兜底（必须放最后）=====
   {
     path: '/:pathMatch(.*)*',

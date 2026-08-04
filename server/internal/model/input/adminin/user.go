@@ -26,6 +26,7 @@ type UserListItem struct {
 	UpdateTime int      `json:"update_time"  dc:"更新时间"`
 	Roles      []string `json:"roles"      dc:"角色标识列表"`
 	RoleNames  []string `json:"roleNames"  dc:"角色名称列表"`
+	IsOnline   bool     `json:"isOnline"   dc:"是否在线（WebSocket 连接）"`
 }
 
 // UserListModel 管理员列表响应模型
