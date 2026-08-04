@@ -218,10 +218,8 @@ xygoadmin/
 <table>
   <tr>
     <td align="center"><b>支付宝</b></td>
-    <td align="center"><b>微信支付</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://xygoupload.xingyunwangluo.com/gitee/alipay.jpg" width="200" /></td>
-    <td align="center"><img src="https://xygoupload.xingyunwangluo.com/gitee/wechatpay.jpg" width="200" /></td>
   </tr>
 </table>

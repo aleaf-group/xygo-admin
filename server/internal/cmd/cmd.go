@@ -32,6 +32,7 @@ import (
 	"xygo/internal/library/monitor"
 	"xygo/internal/library/queue"
 	cronlogic "xygo/internal/logic/cron"
+	queuelogic "xygo/internal/logic/queue"
 	"xygo/internal/middleware"
 	"xygo/internal/websocket"
 )
@@ -85,7 +86,9 @@ var (
 
 			// ✨ 初始化消息队列 & 启动消费者
 			queue.Init(ctx)
-			queue.StartConsumers(ctx)
+			if err := queuelogic.Bootstrap(ctx); err != nil {
+				g.Log().Errorf(ctx, "[queue] bootstrap failed: %v", err)
+			}
 
 			s := g.Server()
 

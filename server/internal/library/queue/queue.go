@@ -143,7 +143,7 @@ func DelayPush(topic string, body interface{}, delaySec int64) error {
 	msg := &Message{
 		Topic:     topic,
 		Body:      bodyStr,
-		MaxRetry:  3,
+		MaxRetry:  defaultMaxRetry(topic),
 		CreatedAt: time.Now().Unix(),
 	}
 	executeAt := time.Now().Unix() + delaySec
@@ -162,7 +162,7 @@ func Push(topic string, body interface{}) error {
 	msg := &Message{
 		Topic:     topic,
 		Body:      bodyStr,
-		MaxRetry:  3,
+		MaxRetry:  defaultMaxRetry(topic),
 		CreatedAt: time.Now().Unix(),
 	}
 	return driver.Push(context.Background(), topic, msg)
@@ -203,19 +203,61 @@ func StartConsumers(ctx context.Context) {
 	if running {
 		return
 	}
-
 	if driver == nil {
 		g.Log().Warning(ctx, "[queue] driver not initialized, skip consumers")
 		return
 	}
 
 	consumers.RLock()
+	if len(consumers.list) == 0 {
+		consumers.RUnlock()
+		g.Log().Info(ctx, "[queue] no consumers registered")
+		return
+	}
+	consumers.RUnlock()
+
+	startConsumersLocked(ctx)
+}
+
+// ReloadConsumers 热更新：停止 worker 后按最新配置重新启动（不关闭驱动）
+func ReloadConsumers(ctx context.Context) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if driver == nil {
+		return fmt.Errorf("queue not initialized")
+	}
+	stopWorkersInternal()
+	startConsumersLocked(ctx)
+	return nil
+}
+
+func stopWorkersInternal() {
+	if cancelFunc != nil {
+		cancelFunc()
+		cancelFunc = nil
+	}
+	running = false
+}
+
+// StopConsumers 停止所有消费者并关闭驱动（服务退出时调用）
+func StopConsumers() {
+	mu.Lock()
+	stopWorkersInternal()
+	mu.Unlock()
+	if driver != nil {
+		_ = driver.Close()
+	}
+	g.Log().Info(context.Background(), "[queue] all consumers stopped")
+}
+
+func startConsumersLocked(ctx context.Context) {
+	consumers.RLock()
 	list := make([]Consumer, len(consumers.list))
 	copy(list, consumers.list)
 	consumers.RUnlock()
 
 	if len(list) == 0 {
-		g.Log().Info(ctx, "[queue] no consumers registered")
 		return
 	}
 
@@ -223,89 +265,101 @@ func StartConsumers(ctx context.Context) {
 	cancelFunc = cancel
 	running = true
 
+	startedWorkers := 0
 	for _, c := range list {
-		go listenConsumer(ctx2, c)
+		cfg := GetTopicConfig(c.GetTopic())
+		if cfg.Status == 0 {
+			g.Log().Infof(ctx, "[queue] topic '%s' disabled, skip workers", c.GetTopic())
+			continue
+		}
+		workers := cfg.Workers
+		if workers < 1 {
+			workers = 1
+		}
+		for w := 0; w < workers; w++ {
+			go listenConsumer(ctx2, c, w+1)
+			startedWorkers++
+		}
 	}
 
-	// 启动消费速率统计收集器
 	go startMetricsCollector(ctx2)
-
-	// 如果驱动支持延迟队列，启动延迟轮询协程
 	if dd, ok := driver.(DelayDriver); ok {
 		go pollDelayQueues(ctx2, dd, list)
 	}
 
-	g.Log().Infof(ctx, "[queue] %d consumers started", len(list))
+	g.Log().Infof(ctx, "[queue] %d workers started for %d topics", startedWorkers, len(list))
 }
 
-// StopConsumers 停止所有消费者
-func StopConsumers() {
-	mu.Lock()
-	defer mu.Unlock()
-	if cancelFunc != nil {
-		cancelFunc()
-	}
-	running = false
-	if driver != nil {
-		_ = driver.Close()
-	}
-	g.Log().Info(context.Background(), "[queue] all consumers stopped")
-}
-
-func listenConsumer(ctx context.Context, c Consumer) {
+func listenConsumer(ctx context.Context, c Consumer, workerNo int) {
 	topic := c.GetTopic()
-	g.Log().Infof(ctx, "[queue] consumer listening: %s", topic)
+	g.Log().Infof(ctx, "[queue] worker #%d listening: %s", workerNo, topic)
 
 	for {
 		select {
 		case <-ctx.Done():
-			g.Log().Infof(ctx, "[queue] consumer stopped: %s", topic)
+			g.Log().Infof(ctx, "[queue] worker #%d stopped: %s", workerNo, topic)
 			return
 		default:
 		}
 
 		msg, err := driver.Pop(ctx, topic, 2*time.Second)
-		if err != nil {
-			// 超时或空，继续
-			continue
-		}
-		if msg == nil {
+		if err != nil || msg == nil {
 			continue
 		}
 
+		cfg := GetTopicConfig(topic)
 		handleStart := time.Now()
 		if err := c.Handle(ctx, msg); err != nil {
 			recordConsumeMetrics(topic, time.Since(handleStart).Milliseconds(), false)
-			// 判断是否为可重试错误
 			if retryErr, ok := err.(*RetryError); ok {
-				g.Log().Warningf(ctx, "[queue] consumer '%s' retry error: %v", topic, retryErr.Err)
-				maxRetry := msg.MaxRetry
-				if maxRetry <= 0 {
-					maxRetry = 3 // 默认最多重试 3 次
-				}
-				if msg.Retry < maxRetry {
-					msg.Retry++
-					if pushErr := driver.Push(ctx, topic, msg); pushErr != nil {
-						g.Log().Errorf(ctx, "[queue] retry push failed for '%s': %v", topic, pushErr)
-					} else {
-						g.Log().Infof(ctx, "[queue] message re-queued for '%s', retry=%d/%d", topic, msg.Retry, maxRetry)
-					}
-				} else {
-					// 超过重试次数，进死信队列
-					deadTopic := topic + ":dead"
-					if pushErr := driver.Push(ctx, deadTopic, msg); pushErr != nil {
-						g.Log().Errorf(ctx, "[queue] dead letter push failed for '%s': %v", topic, pushErr)
-					} else {
-						g.Log().Warningf(ctx, "[queue] message moved to dead letter '%s', retry exhausted", deadTopic)
-					}
-				}
+				g.Log().Warningf(ctx, "[queue] worker #%d '%s' retry error: %v", workerNo, topic, retryErr.Err)
+				requeueWithRetry(ctx, topic, msg, cfg)
 			} else {
-				// 普通错误：只记日志，不重试
-				g.Log().Errorf(ctx, "[queue] consumer '%s' handle failed (no retry): %v", topic, err)
+				g.Log().Errorf(ctx, "[queue] worker #%d '%s' handle failed (no retry): %v", workerNo, topic, err)
 			}
 		} else {
 			recordConsumeMetrics(topic, time.Since(handleStart).Milliseconds(), true)
 		}
+	}
+}
+
+func requeueWithRetry(ctx context.Context, topic string, msg *Message, cfg TopicConfig) {
+	maxRetry := msg.MaxRetry
+	if maxRetry <= 0 {
+		maxRetry = cfg.MaxRetry
+	}
+	if maxRetry <= 0 {
+		maxRetry = 3
+	}
+	if msg.Retry >= maxRetry {
+		deadTopic := topic + ":dead"
+		if pushErr := driver.Push(ctx, deadTopic, msg); pushErr != nil {
+			g.Log().Errorf(ctx, "[queue] dead letter push failed for '%s': %v", topic, pushErr)
+		} else {
+			g.Log().Warningf(ctx, "[queue] message moved to dead letter '%s', retry exhausted", deadTopic)
+		}
+		return
+	}
+
+	msg.Retry++
+	msg.MaxRetry = maxRetry
+	delaySec := cfg.RetryDelaySec
+	if delaySec > 0 {
+		if dd, ok := driver.(DelayDriver); ok {
+			executeAt := time.Now().Unix() + int64(delaySec)
+			if pushErr := dd.DelayPush(ctx, topic, msg, executeAt); pushErr != nil {
+				g.Log().Errorf(ctx, "[queue] delayed retry push failed for '%s': %v", topic, pushErr)
+			} else {
+				g.Log().Infof(ctx, "[queue] message delayed retry for '%s', retry=%d/%d, delay=%ds", topic, msg.Retry, maxRetry, delaySec)
+			}
+			return
+		}
+	}
+
+	if pushErr := driver.Push(ctx, topic, msg); pushErr != nil {
+		g.Log().Errorf(ctx, "[queue] retry push failed for '%s': %v", topic, pushErr)
+	} else {
+		g.Log().Infof(ctx, "[queue] message re-queued for '%s', retry=%d/%d", topic, msg.Retry, maxRetry)
 	}
 }
 
@@ -469,11 +523,18 @@ func CheckAlerts(ctx context.Context) []string {
 
 // TopicStats 队列统计
 type TopicStats struct {
-	Topic     string  `json:"topic"`
-	Pending   int64   `json:"pending"`
-	DeadSize  int64   `json:"deadSize"`
-	Rate      float64 `json:"rate"`      // 每分钟消费速率
-	AvgTakeMs float64 `json:"avgTakeMs"` // 平均耗时(ms)
+	Topic         string  `json:"topic"`
+	Title         string  `json:"title"`
+	Pending       int64   `json:"pending"`
+	DeadSize      int64   `json:"deadSize"`
+	Rate          float64 `json:"rate"`
+	AvgTakeMs     float64 `json:"avgTakeMs"`
+	Workers       int     `json:"workers"`
+	MaxRetry      int     `json:"maxRetry"`
+	RetryDelaySec int     `json:"retryDelaySec"`
+	Status        int     `json:"status"`
+	ConfigId      uint64  `json:"configId"`
+	Remark        string  `json:"remark"`
 }
 
 // GetStats 获取所有消费者队列的统计
@@ -497,12 +558,20 @@ func GetStats(ctx context.Context) []TopicStats {
 		}
 		metricsMu.RUnlock()
 
+		cfg := GetTopicConfig(topic)
 		stats = append(stats, TopicStats{
-			Topic:     topic,
-			Pending:   pending,
-			DeadSize:  deadSize,
-			Rate:      rate,
-			AvgTakeMs: avgMs,
+			Topic:         topic,
+			Title:         cfg.Title,
+			Pending:       pending,
+			DeadSize:      deadSize,
+			Rate:          rate,
+			AvgTakeMs:     avgMs,
+			Workers:       cfg.Workers,
+			MaxRetry:      cfg.MaxRetry,
+			RetryDelaySec: cfg.RetryDelaySec,
+			Status:        cfg.Status,
+			ConfigId:      cfg.Id,
+			Remark:        cfg.Remark,
 		})
 	}
 	return stats

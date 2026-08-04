@@ -3922,6 +3922,51 @@ ALTER SEQUENCE public.xy_sys_cron_log_id_seq OWNED BY public.xy_sys_cron_log.id;
 
 
 --
+-- Name: xy_sys_queue_config; Type: TABLE; Schema: xygonew; Owner: -
+--
+
+CREATE TABLE public.xy_sys_queue_config (
+    id bigint NOT NULL,
+    topic character varying(64) DEFAULT ''::character varying NOT NULL,
+    title character varying(128) DEFAULT ''::character varying NOT NULL,
+    workers integer DEFAULT 1 NOT NULL,
+    max_retry integer DEFAULT 3 NOT NULL,
+    retry_delay_sec integer DEFAULT 0 NOT NULL,
+    status smallint DEFAULT 1 NOT NULL,
+    remark character varying(255) DEFAULT ''::character varying NOT NULL,
+    sort integer DEFAULT 0 NOT NULL,
+    created_at bigint DEFAULT 0 NOT NULL,
+    updated_at bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: TABLE xy_sys_queue_config; Type: COMMENT; Schema: xygonew; Owner: -
+--
+
+COMMENT ON TABLE public.xy_sys_queue_config IS '消息队列Topic配置';
+
+
+--
+-- Name: xy_sys_queue_config_id_seq; Type: SEQUENCE; Schema: xygonew; Owner: -
+--
+
+CREATE SEQUENCE public.xy_sys_queue_config_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: xy_sys_queue_config_id_seq; Type: SEQUENCE OWNED BY; Schema: xygonew; Owner: -
+--
+
+ALTER SEQUENCE public.xy_sys_queue_config_id_seq OWNED BY public.xy_sys_queue_config.id;
+
+
+--
 -- Name: xy_sys_gen_codes; Type: TABLE; Schema: xygonew; Owner: -
 --
 
@@ -4754,6 +4799,13 @@ ALTER TABLE ONLY public.xy_sys_cron_log ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: xy_sys_queue_config id; Type: DEFAULT; Schema: xygonew; Owner: -
+--
+
+ALTER TABLE ONLY public.xy_sys_queue_config ALTER COLUMN id SET DEFAULT nextval('public.xy_sys_queue_config_id_seq'::regclass);
+
+
+--
 -- Name: xy_sys_gen_codes id; Type: DEFAULT; Schema: xygonew; Owner: -
 --
 
@@ -5020,7 +5072,9 @@ INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, compon
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (242, 240, 3, '新增/编辑', 'edit', '', '', '', '', 0, 0, '', '', '["POST /admin/cron/save"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, 1770717535, 1770717535);
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (243, 240, 3, '删除', 'delete', '', '', '', '', 0, 0, '', '', '["POST /admin/cron/delete"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, 1770717535, 1770717535);
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (244, 240, 3, '在线执行', 'exec', '', '', '', '', 0, 0, '', '', '["POST /admin/cron/onlineExec"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, 1770717535, 1770717535);
-INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (250, 60, 2, '消息队列', 'QueueManage', 'queue', '/system/queue/index', '', 'ri:stack-line', 0, 1, '', '', '', 0, 0, 0, '', '', 0, 0, 85, 1, '消息队列管理', 0, 0, 1770719034, 1770719034);
+INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (250, 60, 2, '消息队列', 'QueueManage', 'queue', '/system/queue/index', '', 'ri:stack-line', 0, 1, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 85, 1, '消息队列管理', 0, 0, 1770719034, 1770719034);
+INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (812, 250, 3, '查看', 'view', '', '', '', '', 0, 0, '', '', '["GET /admin/queue/stats","GET /admin/queue/topics"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, 1770719034, 1770719034);
+INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (813, 250, 3, '编辑配置', 'edit', '', '', '', '', 0, 0, '', '', '["POST /admin/queue/configSave"]', 0, 0, 0, '', '', 0, 0, 0, 1, '', 0, 0, 1770719034, 1770719034);
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (418, 143, 2, '登录日志', 'MemberLoginLog', 'member-login-log', '/member/member-login-log/index', '', 'ri:file-list-line', 0, 1, '', '', '["GET /admin/member-login-log/list"]', 0, 0, 0, '', '', 0, 0, 100, 1, '', 0, 0, 1770873777, 1770873777);
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (419, 418, 3, '查看登录日志', 'view', '', '', '', '', 0, 0, '', '', '["GET /admin/member-login-log/view"]', 0, 0, 0, '', '', 0, 0, 1, 1, '', 0, 0, 1770873777, 1770873777);
 INSERT INTO public.xy_admin_menu (id, parent_id, type, title, name, path, component, resource, icon, hidden, keep_alive, redirect, frame_src, perms, is_frame, affix, show_badge, badge_text, active_path, hide_tab, is_full_page, sort, status, remark, created_by, updated_by, create_time, update_time) VALUES (420, 143, 2, '登录日志详情', 'MemberLoginLogDetail', 'member-login-log/detail', '/member/member-login-log/detail/index', '', '', 1, 0, '', '', '["GET /admin/member-login-log/view"]', 0, 0, 0, '', '/member-login-log', 0, 0, 0, 1, '', 0, 0, 1770873777, 1770873777);
@@ -5549,6 +5603,16 @@ INSERT INTO public.xy_sys_cron_log (id, cron_id, name, title, params, status, ou
 
 
 --
+-- Data for Name: xy_sys_queue_config; Type: TABLE DATA; Schema: xygonew; Owner: -
+--
+
+INSERT INTO public.xy_sys_queue_config (id, topic, title, workers, max_retry, retry_delay_sec, status, remark, sort, created_at, updated_at) VALUES (1, 'login_log', '登录日志', 1, 3, 0, 1, '内置消费者', 1, 1770719034, 1770719034);
+INSERT INTO public.xy_sys_queue_config (id, topic, title, workers, max_retry, retry_delay_sec, status, remark, sort, created_at, updated_at) VALUES (2, 'notice_push', '通知推送', 1, 3, 0, 1, '内置消费者', 2, 1770719034, 1770719034);
+INSERT INTO public.xy_sys_queue_config (id, topic, title, workers, max_retry, retry_delay_sec, status, remark, sort, created_at, updated_at) VALUES (3, 'operation_log', '操作日志', 1, 3, 0, 1, '内置消费者', 3, 1770719034, 1770719034);
+INSERT INTO public.xy_sys_queue_config (id, topic, title, workers, max_retry, retry_delay_sec, status, remark, sort, created_at, updated_at) VALUES (4, 'demo_task', '演示任务', 1, 3, 0, 1, '示例消费者', 4, 1770719034, 1770719034);
+
+
+--
 -- Data for Name: xy_sys_gen_codes; Type: TABLE DATA; Schema: xygonew; Owner: -
 --
 
@@ -5860,6 +5924,13 @@ SELECT pg_catalog.setval('public.xy_sys_cron_id_seq', 2, true);
 --
 
 SELECT pg_catalog.setval('public.xy_sys_cron_log_id_seq', 31, true);
+
+
+--
+-- Name: xy_sys_queue_config_id_seq; Type: SEQUENCE SET; Schema: xygonew; Owner: -
+--
+
+SELECT pg_catalog.setval('public.xy_sys_queue_config_id_seq', 4, true);
 
 
 --
@@ -6182,6 +6253,14 @@ ALTER TABLE ONLY public.xy_sys_cron_group
 
 ALTER TABLE ONLY public.xy_sys_cron_log
     ADD CONSTRAINT idx_17512_primary PRIMARY KEY (id);
+
+
+--
+-- Name: xy_sys_queue_config idx_17520_primary; Type: CONSTRAINT; Schema: xygonew; Owner: -
+--
+
+ALTER TABLE ONLY public.xy_sys_queue_config
+    ADD CONSTRAINT idx_17520_primary PRIMARY KEY (id);
 
 
 --
@@ -6692,6 +6771,13 @@ CREATE INDEX idx_17512_idx_created_at ON public.xy_sys_cron_log USING btree (cre
 --
 
 CREATE INDEX idx_17512_idx_cron_id ON public.xy_sys_cron_log USING btree (cron_id);
+
+
+--
+-- Name: uk_xy_sys_queue_config_topic; Type: INDEX; Schema: xygonew; Owner: -
+--
+
+CREATE UNIQUE INDEX uk_xy_sys_queue_config_topic ON public.xy_sys_queue_config USING btree (topic);
 
 
 --

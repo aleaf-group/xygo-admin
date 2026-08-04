@@ -14,6 +14,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 
 	"xygo/internal/library/queue"
+	"xygo/internal/model/input/adminin"
 )
 
 // QueueStatsReq 队列统计
@@ -44,3 +45,11 @@ type QueuePushTestReq struct {
 }
 
 type QueuePushTestRes struct{}
+
+// QueueConfigSaveReq 保存 Topic 运行配置
+type QueueConfigSaveReq struct {
+	g.Meta `path:"/admin/queue/configSave" method:"post" tags:"Queue" summary:"保存Topic运行配置"`
+	adminin.QueueConfigSaveInp
+}
+
+type QueueConfigSaveRes struct{}

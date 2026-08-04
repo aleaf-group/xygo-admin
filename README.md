@@ -218,10 +218,8 @@ If XYGo Admin has been helpful to you, feel free to buy the author a coffee ☕.
 <table>
   <tr>
     <td align="center"><b>Alipay</b></td>
-    <td align="center"><b>WeChat Pay</b></td>
   </tr>
   <tr>
     <td align="center"><img src="https://xygoupload.xingyunwangluo.com/gitee/alipay.jpg" width="200" /></td>
-    <td align="center"><img src="https://xygoupload.xingyunwangluo.com/gitee/wechatpay.jpg" width="200" /></td>
   </tr>
 </table>

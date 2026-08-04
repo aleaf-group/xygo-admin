@@ -14,6 +14,7 @@ import (
 	"context"
 
 	api "xygo/api/admin"
+	queuelogic "xygo/internal/logic/queue"
 	"xygo/internal/library/queue"
 )
 
@@ -40,4 +41,10 @@ func (c *ControllerV1) QueuePushTest(ctx context.Context, req *api.QueuePushTest
 		err = queue.Push(req.Topic, req.Body)
 	}
 	return &api.QueuePushTestRes{}, err
+}
+
+// QueueConfigSave 保存 Topic 运行配置并热更新 worker
+func (c *ControllerV1) QueueConfigSave(ctx context.Context, req *api.QueueConfigSaveReq) (res *api.QueueConfigSaveRes, err error) {
+	err = queuelogic.SaveConfig(ctx, &req.QueueConfigSaveInp)
+	return &api.QueueConfigSaveRes{}, err
 }

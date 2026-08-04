@@ -1,12 +1,3 @@
-<!-- +----------------------------------------------------------------------
-  | XYGo Admin [ Vue3 + GoFrame 企业级中后台管理系统 ]
-  +----------------------------------------------------------------------
-  | Copyright (c) 2026 大连星韵网络科技有限公司 All rights reserved.
-  +----------------------------------------------------------------------
-  | Licensed ( https://opensource.org/licenses/MIT )
-  +----------------------------------------------------------------------
-  | Author: 喜羊羊 <751300685@qq.com>
-  +---------------------------------------------------------------------- -->
 <!-- 消息队列管理页面 -->
 <template>
   <div class="queue-page art-full-height">
@@ -16,7 +7,7 @@
         <div class="flex-c gap-3">
           <span class="text-base font-semibold">消息队列</span>
           <ElTag type="info" size="small">驱动：{{ stats.driver || '-' }}</ElTag>
-          <ElTag type="success" size="small">消费者：{{ stats.topics?.length || 0 }} 个</ElTag>
+          <ElTag type="success" size="small">Topic：{{ stats.topics?.length || 0 }} 个</ElTag>
         </div>
         <div class="flex-c gap-2">
           <ElButton @click="showPushDialog = true">测试投递</ElButton>
@@ -26,41 +17,51 @@
 
       <!-- 队列统计表格 -->
       <ElTable :data="stats.topics || []" v-loading="loading" border stripe>
-        <ElTableColumn prop="topic" label="Topic" min-width="200">
+        <ElTableColumn prop="topic" label="Topic" min-width="140">
           <template #default="{ row }">
             <code class="text-sm text-blue-600">{{ row.topic }}</code>
+            <div v-if="row.title && row.title !== row.topic" class="text-xs text-g-400">{{ row.title }}</div>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="pending" label="待消费" width="120" align="center">
+        <ElTableColumn prop="workers" label="Worker" width="80" align="center" />
+        <ElTableColumn prop="maxRetry" label="重试" width="70" align="center" />
+        <ElTableColumn prop="retryDelaySec" label="重试间隔" width="90" align="center">
+          <template #default="{ row }">
+            <span class="text-sm">{{ row.retryDelaySec ? row.retryDelaySec + 's' : '-' }}</span>
+          </template>
+        </ElTableColumn>
+        <ElTableColumn prop="pending" label="待消费" width="90" align="center">
           <template #default="{ row }">
             <ElTag :type="row.pending > 0 ? 'warning' : 'success'" size="small">{{ row.pending }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="deadSize" label="死信" width="100" align="center">
+        <ElTableColumn prop="deadSize" label="死信" width="80" align="center">
           <template #default="{ row }">
             <ElTag :type="row.deadSize > 0 ? 'danger' : 'info'" size="small">{{ row.deadSize }}</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="rate" label="速率(条/分)" width="120" align="center">
+        <ElTableColumn prop="rate" label="速率(条/分)" width="110" align="center">
           <template #default="{ row }">
             <span class="text-sm">{{ row.rate ? row.rate.toFixed(0) : '0' }}</span>
           </template>
         </ElTableColumn>
-        <ElTableColumn prop="avgTakeMs" label="平均耗时" width="110" align="center">
+        <ElTableColumn prop="avgTakeMs" label="平均耗时" width="100" align="center">
           <template #default="{ row }">
             <span class="text-sm">{{ row.rate > 0 ? row.avgTakeMs.toFixed(1) + 'ms' : '-' }}</span>
           </template>
         </ElTableColumn>
         <ElTableColumn label="状态" width="80" align="center">
-          <template #default>
-            <span class="flex-c justify-center gap-1">
+          <template #default="{ row }">
+            <span v-if="row.status === 1" class="flex-c justify-center gap-1">
               <span class="inline-block h-2 w-2 rounded-full bg-success/100"></span>
               <span class="text-xs text-g-600">运行</span>
             </span>
+            <ElTag v-else type="info" size="small">停用</ElTag>
           </template>
         </ElTableColumn>
-        <ElTableColumn label="操作" width="120" align="right">
+        <ElTableColumn label="操作" width="160" align="right" fixed="right">
           <template #default="{ row }">
+            <ElButton v-if="hasAuth('edit')" size="small" text type="primary" @click="openConfig(row)">配置</ElButton>
             <ElButton size="small" text type="primary" @click="pushToTopic(row.topic)">投递测试</ElButton>
           </template>
         </ElTableColumn>
@@ -71,12 +72,15 @@
         <div class="mb-2 text-sm font-medium text-g-700">使用说明</div>
         <ul class="space-y-1 text-xs text-g-500">
           <li>消息队列支持 <strong>Redis</strong> 和 <strong>Disk</strong> 双驱动，可在配置文件中切换</li>
-          <li>消费失败自动重试 3 次，超过后进入<strong>死信队列</strong>（topic:dead）</li>
-          <li>新增消费者：在 <code>server/internal/queues/</code> 实现 Consumer 接口并 Register</li>
+          <li><strong>Worker 数</strong>：同一进程内并行消费的 goroutine 数量（类似 Supervisor numprocs）</li>
+          <li>消费失败返回 <code>NewRetryError</code> 时按上方配置重试，超限进入<strong>死信队列</strong>（topic:dead）</li>
+          <li>新增消费者：在 <code>server/internal/queues/</code> 实现 Consumer 接口并 Register（示例见 <code>demo_task.go</code>），重启后自动出现在列表</li>
           <li>生产者投递：<code>queue.Push("topic_name", data)</code></li>
         </ul>
       </div>
     </ElCard>
+
+    <QueueConfigDialog v-model:visible="showConfigDialog" :data="currentTopic" @success="loadStats" />
 
     <!-- 测试投递弹窗 -->
     <ElDialog v-model="showPushDialog" title="测试投递消息" width="500px" align-center>
@@ -105,14 +109,19 @@
 <script setup lang="ts">
   import { Refresh } from '@element-plus/icons-vue'
   import { ElMessage } from 'element-plus'
-  import { fetchQueueStats, fetchQueueTopics, fetchQueuePushTest } from '@/api/backend/system/queue'
+  import { useAuth } from '@/hooks/core/useAuth'
+  import { fetchQueueStats, fetchQueueTopics, fetchQueuePushTest, type QueueTopicStats } from '@/api/backend/system/queue'
+  import QueueConfigDialog from './modules/queue-config-dialog.vue'
 
   defineOptions({ name: 'QueueManage' })
 
+  const { hasAuth } = useAuth()
   const loading = ref(false)
-  const stats = ref<{ driver: string; topics: any[] }>({ driver: '', topics: [] })
+  const stats = ref<{ driver: string; topics: QueueTopicStats[] }>({ driver: '', topics: [] })
   const registeredTopics = ref<string[]>([])
   const showPushDialog = ref(false)
+  const showConfigDialog = ref(false)
+  const currentTopic = ref<QueueTopicStats | null>(null)
   const pushing = ref(false)
   const pushForm = reactive({ topic: '', body: '', delaySec: 0 })
 
@@ -133,11 +142,16 @@
     } catch { /* */ }
   }
 
-  // 各 topic 的默认测试数据（与消费者数据结构对齐）
+  const openConfig = (row: QueueTopicStats) => {
+    currentTopic.value = row
+    showConfigDialog.value = true
+  }
+
   const topicDefaultBody: Record<string, string> = {
     login_log: JSON.stringify({ username: 'test', ip: '127.0.0.1', location: '测试', user_agent: 'QueueTest', browser: 'Test', os: 'Test', status: 1, message: '队列测试登录', created_at: Math.floor(Date.now() / 1000) }, null, 2),
     operation_log: JSON.stringify({ user_id: 1, username: 'admin', module: 'test', title: '队列测试', method: 'POST', url: '/test', ip: '127.0.0.1', location: '测试', user_agent: 'QueueTest', request_body: '{}', response_body: '{}', error_message: '', status: 1, elapsed: 10, created_at: Math.floor(Date.now() / 1000) }, null, 2),
     notice_push: JSON.stringify({ userIds: [1], event: 'notice', payload: { title: '队列测试通知', content: '这是一条来自队列投递测试的通知' } }, null, 2),
+    demo_task: JSON.stringify({ message: 'Hello from demo_task queue', fail: false }, null, 2),
   }
 
   const pushToTopic = (topic: string) => {
