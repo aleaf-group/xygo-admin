@@ -15,10 +15,10 @@
       <div v-if="imageUrl" class="image-preview">
         <ElImage 
           ref="imageRef"
-          :src="imageUrl" 
+          :src="singleDisplayUrl" 
           fit="contain" 
           class="preview-image" 
-          :preview-src-list="[imageUrl]"
+          :preview-src-list="[singleDisplayUrl]"
           :initial-index="0"
           preview-teleported
         />
@@ -59,7 +59,7 @@
           :key="element.id"
           class="image-item"
         >
-          <ElImage :src="element.url" fit="cover" class="preview-image" :preview-src-list="imageList.map(img => img.url)" />
+          <ElImage :src="displayUrlFor(element.url)" fit="cover" class="preview-image" :preview-src-list="imageList.map(img => displayUrlFor(img.url))" />
           <div class="image-actions">
             <div class="action-btn" @click="handlePreviewMultiple(index)">
               <ArtSvgIcon icon="ri:eye-line" :size="14" />
@@ -87,11 +87,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadProps, UploadRequestOptions } from 'element-plus'
 import { uploadImageApi } from '@/api/backend/common/upload'
+import {
+  ensureMediaPreviewUrl,
+  mediaDisplayUrl,
+  mediaPreviewCache,
+  uploadStoragePath
+} from '@/utils/media-url'
 
 defineOptions({ name: 'ArtImageUpload' })
 
@@ -118,7 +124,7 @@ const emit = defineEmits<{
 }>()
 
 
-// 单图模式
+// 单图模式（v-model 存 object key）
 const imageUrl = computed({
   get: () => {
     if (props.multiple) return ''
@@ -129,6 +135,32 @@ const imageUrl = computed({
     emit('change', val || '')
   }
 })
+
+const singleDisplayUrl = computed(() => mediaDisplayUrl(imageUrl.value))
+
+watch(
+  () => imageUrl.value,
+  (path) => {
+    if (path && !/^https?:\/\//i.test(path)) ensureMediaPreviewUrl(path)
+  },
+  { immediate: true }
+)
+
+const displayUrlFor = (path: string) => mediaDisplayUrl(path)
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (!props.multiple) return
+    const paths: string[] = []
+    if (Array.isArray(val)) paths.push(...val.filter(Boolean))
+    else if (typeof val === 'string' && val) paths.push(...val.split(',').map((s) => s.trim()).filter(Boolean))
+    paths.forEach((p) => {
+      if (!/^https?:\/\//i.test(p)) ensureMediaPreviewUrl(p)
+    })
+  },
+  { immediate: true, deep: true }
+)
 
 // 多图模式
 const imageList = computed({
@@ -180,8 +212,10 @@ const customUpload = async (options: UploadRequestOptions) => {
     // request.post 成功时直接返回 data.data，失败时抛出异常
     const data = await uploadImageApi(options.file as File)
     
-    if (data?.url) {
-      imageUrl.value = data.url
+    if (data?.url || data?.path) {
+      const path = uploadStoragePath(data)
+      imageUrl.value = path
+      if (data.url) mediaPreviewCache[path] = data.url
       ElMessage.success('上传成功')
       options.onSuccess(data)
     } else {
@@ -200,8 +234,10 @@ const customUploadMultiple = async (options: UploadRequestOptions) => {
     // request.post 成功时直接返回 data.data，失败时抛出异常
     const data = await uploadImageApi(options.file as File)
     
-    if (data?.url) {
-      const newList = [...imageList.value, { url: data.url, id: Date.now() }]
+    if (data?.url || data?.path) {
+      const path = uploadStoragePath(data)
+      if (data.url) mediaPreviewCache[path] = data.url
+      const newList = [...imageList.value, { url: path, id: Date.now() }]
       imageList.value = newList
       ElMessage.success('上传成功')
       options.onSuccess(data)

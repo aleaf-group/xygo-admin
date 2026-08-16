@@ -38,6 +38,7 @@ export const uploadImageApi = (file: File) => {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
+    timeout: 120000,
     showErrorMessage: true
   })
 }
@@ -56,6 +57,7 @@ export const uploadFileApi = (file: File) => {
     headers: {
       'Content-Type': 'multipart/form-data'
     },
+    timeout: 120000,
     showErrorMessage: true
   })
 }
@@ -78,6 +80,7 @@ export const uploadFileWithProgressApi = (
     headers: {
       'Content-Type': 'multipart/form-data'
     },
+    timeout: 120000,
     onUploadProgress: (progressEvent: any) => {
       if (progressEvent.lengthComputable && onProgress) {
         const percentCompleted = Math.round(

@@ -86,3 +86,49 @@ export const getFirstMenuPath = (menuList: AppRouteRecord[]): string => {
 
   return ''
 }
+
+/** 个人中心页面 component（菜单 SSOT，不随层级变化） */
+export const USER_CENTER_COMPONENT = '/system/user-center'
+
+/** 个人中心默认 route name */
+export const USER_CENTER_ROUTE_NAME = 'UserCenter'
+
+function normalizeComponentPath(component?: string | (() => Promise<any>)): string {
+  if (typeof component !== 'string' || !component.trim()) return ''
+  const path = component.trim()
+  if (path === 'Layout') return ''
+  return path.startsWith('/') ? path : `/${path}`
+}
+
+/**
+ * 在菜单树中按 component 或 route name 查找实际访问路径
+ * （菜单层级调整后 path 会变，component 通常不变）
+ */
+export function findMenuPath(
+  menuList: AppRouteRecord[],
+  options: { component?: string; name?: string }
+): string {
+  if (!Array.isArray(menuList) || !menuList.length) return ''
+
+  const targetComponent = options.component ? normalizeComponentPath(options.component) : ''
+  const targetName = options.name?.trim() || ''
+
+  for (const item of menuList) {
+    const itemComponent = normalizeComponentPath(item.component as string)
+    const itemName = String(item.name || '')
+    const matched =
+      (targetComponent && itemComponent === targetComponent) ||
+      (targetName && itemName === targetName)
+
+    if (matched && item.path?.trim()) {
+      return normalizePath(item.path)
+    }
+
+    if (item.children?.length) {
+      const childPath = findMenuPath(item.children, options)
+      if (childPath) return childPath
+    }
+  }
+
+  return ''
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 
 	api "xygo/api/site"
+	"xygo/internal/library/storager"
 	"xygo/internal/service"
 )
 
@@ -66,7 +67,7 @@ func (c *ControllerV1) Index(ctx context.Context, req *api.IndexReq) (res *api.I
 		Timezone:         getTimezone(ctx, items["site_timezone"]),
 		Description:      items["site_description"],
 		ThemeColor:       items["theme_color"],
-		Logo:             items["site_logo"],
+		Logo:             storager.CdnUrlByPath(ctx, items["site_logo"]),
 		Closed:           items["site_closed"],
 		OpenMemberCenter: openMemberCenter,
 		DemoMode:         demoMode,

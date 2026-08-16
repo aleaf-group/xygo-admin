@@ -27,7 +27,8 @@ type AttachmentListItem struct {
 	Id         uint64 `json:"id" dc:"附件ID"`
 	Topic      string `json:"topic" dc:"分组/主题"`
 	UserId     uint64 `json:"userId" dc:"上传用户ID"`
-	Url        string `json:"url" dc:"访问地址"`
+	Url       string `json:"url" dc:"存储路径（object key，入库/CMS 用）"`
+	CdnUrl    string `json:"cdnUrl" dc:"浏览器可访问地址（本地相对路径 / 云存储 CDN 完整 URL）"`
 	Name       string `json:"name" dc:"文件名"`
 	Size       uint64 `json:"size" dc:"文件大小（字节）"`
 	Mimetype   string `json:"mimetype" dc:"MIME类型"`

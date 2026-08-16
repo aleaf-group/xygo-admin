@@ -17,6 +17,7 @@ import (
 	"xygo/internal/dao"
 	captchaLib "xygo/internal/library/captcha"
 	"xygo/internal/library/security"
+	"xygo/internal/library/storager"
 	"xygo/internal/library/token"
 	logLogic "xygo/internal/logic/log"
 	"xygo/internal/model"
@@ -298,8 +299,11 @@ func (c *ControllerV1) Profile(ctx context.Context, req *api.ProfileReq) (res *a
 		postNames = append(postNames, p.Name)
 	}
 
-	// 处理头像：如果无头像则生成字母头像
-	avatar := user.Avatar
+	// 处理头像：云存储时解析为 CDN URL；无头像则生成字母头像
+	avatar := strings.TrimSpace(user.Avatar)
+	if avatar != "" && !strings.HasPrefix(avatar, "http://") && !strings.HasPrefix(avatar, "https://") {
+		avatar = storager.CdnUrlByPath(ctx, avatar)
+	}
 	if avatar == "" {
 		name := ""
 		if name == "" {

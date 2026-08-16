@@ -96,10 +96,10 @@
               <div class="file-card__preview">
                 <ElImage
                   v-if="item.mimetype?.startsWith('image/')"
-                  :src="item.url"
+                  :src="attachmentDisplayUrl(item)"
                   fit="cover"
                   class="file-card__img"
-                  :preview-src-list="[item.url]"
+                  :preview-src-list="[attachmentDisplayUrl(item)]"
                   preview-teleported
                 />
                 <div v-else class="file-card__icon">
@@ -144,6 +144,7 @@
   import { useTable } from '@/hooks/core/useTable'
   import { useAuth } from '@/hooks/core/useAuth'
   import { fetchAttachmentList, fetchDeleteAttachment } from '@/api/backend/common/attachment'
+  import { attachmentDisplayUrl } from '@/utils/media-url'
   import { uploadFileApi } from '@/api/backend/common/upload'
   import AttachmentSearch from './modules/attachment-search.vue'
   import { ElTag, ElMessageBox, ElImage, ElButton } from 'element-plus'
@@ -159,6 +160,7 @@
     topic: string
     userId: number
     url: string
+    cdnUrl?: string
     name: string
     size: number
     mimetype: string
@@ -194,7 +196,7 @@
           prop: 'preview', label: '预览', width: 80, align: 'center',
           formatter: (row: AttachmentItem) =>
             row.mimetype?.startsWith('image/')
-              ? h(ElImage, { class: 'w-12 h-12 rounded', src: row.url, previewSrcList: [row.url], previewTeleported: true, fit: 'cover' })
+              ? h(ElImage, { class: 'w-12 h-12 rounded', src: attachmentDisplayUrl(row), previewSrcList: [attachmentDisplayUrl(row)], previewTeleported: true, fit: 'cover' })
               : h('span', { class: 'text-gray-400 text-xs' }, getFileEmoji(row.mimetype))
         },
         { prop: 'name', label: '文件名', minWidth: 180, showOverflowTooltip: true },
@@ -305,16 +307,18 @@
 
   const handleCopyUrl = async (row: AttachmentItem) => {
     try {
-      const url = row.url.startsWith('http') ? row.url : window.location.origin + row.url
-      await navigator.clipboard.writeText(url)
+      const url = attachmentDisplayUrl(row)
+      const text = url.startsWith('http') ? url : window.location.origin + url
+      await navigator.clipboard.writeText(text)
       ElMessage.success('链接已复制')
     } catch { ElMessage.error('复制失败') }
   }
 
   const handleDownload = (row: AttachmentItem) => {
-    const url = row.url.startsWith('http') ? row.url : window.location.origin + row.url
+    const url = attachmentDisplayUrl(row)
+    const href = url.startsWith('http') ? url : window.location.origin + url
     const a = document.createElement('a')
-    a.href = url; a.download = row.name || 'download'; a.target = '_blank'
+    a.href = href; a.download = row.name || 'download'; a.target = '_blank'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
   }
 

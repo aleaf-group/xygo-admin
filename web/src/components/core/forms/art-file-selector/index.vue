@@ -20,9 +20,9 @@
       >
         <ElImage
           v-if="isImage(url)"
-          :src="url"
-          :preview-src-list="fileList.filter(isImage)"
-          :initial-index="fileList.filter(isImage).indexOf(url)"
+          :src="previewUrlAt(idx)"
+          :preview-src-list="displayPreviewList"
+          :initial-index="imagePreviewIndex(idx)"
           fit="cover"
           preview-teleported
           class="preview-img"
@@ -104,10 +104,9 @@
               <div class="file-card__preview">
                 <ElImage
                   v-if="item.mimetype?.startsWith('image/')"
-                  :src="item.url"
+                  :src="attachmentDisplayUrl(item)"
                   fit="cover"
                   class="file-card__img"
-                  :preview-src-list="[]"
                 />
                 <div v-else class="file-card__icon">
                   <ArtSvgIcon :icon="getMimeIcon(item.mimetype)" class="text-3xl" />
@@ -152,11 +151,13 @@
 <script setup lang="ts">
   import { uploadFileApi } from '@/api/backend/common/upload'
   import { fetchAttachmentList } from '@/api/backend/common/attachment'
+  import { attachmentDisplayUrl, ensureMediaPreviewUrl, mediaDisplayUrl, uploadStoragePath } from '@/utils/media-url'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
 
   export interface FileItem {
     id: number
     url: string
+    cdnUrl?: string
     name: string
     size: number
     mimetype: string
@@ -165,6 +166,8 @@
 
   const props = withDefaults(defineProps<{
     modelValue?: string | string[]
+    /** 与 modelValue 顺序对应的展示 URL（后端 cdnUrl），不入库 */
+    previewUrls?: string | string[]
     maxNumber?: number
     fileType?: 'image' | 'doc' | 'audio' | 'video' | 'archive' | 'all'
     width?: number
@@ -189,6 +192,41 @@
     if (Array.isArray(props.modelValue)) return props.modelValue.filter(Boolean)
     return props.modelValue.split(',').map(s => s.trim()).filter(Boolean)
   })
+
+  const previewUrlList = computed<string[]>(() => {
+    if (!props.previewUrls) return []
+    if (Array.isArray(props.previewUrls)) return props.previewUrls.filter(Boolean)
+    return props.previewUrls.split(',').map(s => s.trim()).filter(Boolean)
+  })
+
+  /** 本次会话内新选文件的展示 URL（附件列表带 cdnUrl） */
+  const localPreviewUrls = ref<string[]>([])
+
+  watch(fileList, (list) => {
+    if (localPreviewUrls.value.length > list.length) {
+      localPreviewUrls.value = localPreviewUrls.value.slice(0, list.length)
+    }
+    list.forEach((path) => {
+      if (path && !/^https?:\/\//i.test(path)) ensureMediaPreviewUrl(path)
+    })
+  }, { immediate: true })
+
+  const previewUrlAt = (idx: number) =>
+    mediaDisplayUrl(fileList.value[idx], previewUrlList.value[idx] || localPreviewUrls.value[idx])
+
+  const displayPreviewList = computed(() =>
+    fileList.value
+      .map((url, idx) => (isImage(url) ? previewUrlAt(idx) : ''))
+      .filter(Boolean)
+  )
+
+  const imagePreviewIndex = (idx: number) => {
+    let n = 0
+    for (let i = 0; i < idx; i++) {
+      if (isImage(fileList.value[i])) n++
+    }
+    return n
+  }
 
   const buttonText = computed(() => {
     const map: Record<string, string> = {
@@ -277,8 +315,11 @@
 
   const confirmSelect = () => {
     const urls = tempSelected.value.map(f => f.url)
+    const cdnUrls = tempSelected.value.map(f => attachmentDisplayUrl(f))
     const existing = fileList.value.slice()
+    const existingPreviews = existing.map((_, i) => previewUrlAt(i))
     const merged = [...existing, ...urls].slice(0, props.maxNumber)
+    localPreviewUrls.value = [...existingPreviews, ...cdnUrls].slice(0, props.maxNumber)
 
     if (props.maxNumber === 1) {
       emit('update:modelValue', merged[0] || '')
@@ -291,6 +332,7 @@
   const removeFile = (idx: number) => {
     const list = [...fileList.value]
     list.splice(idx, 1)
+    localPreviewUrls.value.splice(idx, 1)
     if (props.maxNumber === 1) {
       emit('update:modelValue', '')
     } else {
@@ -307,9 +349,9 @@
     for (const file of Array.from(input.files)) {
       try {
         const res = await uploadFileApi(file)
-        if ((res as any)?.url) {
+        if (res?.url || res?.path) {
           ElMessage.success(`${file.name} 上传成功`)
-          loadFiles() // 刷新列表
+          loadFiles()
         }
       } catch { ElMessage.error(`${file.name} 上传失败`) }
     }

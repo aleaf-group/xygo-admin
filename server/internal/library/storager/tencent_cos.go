@@ -60,16 +60,19 @@ func (t *TencentCOS) DriverName() string {
 
 // Upload 上传文件到腾讯云 COS
 func (t *TencentCOS) Upload(ctx context.Context, file *UploadFile) (*UploadResult, error) {
-	ext := file.Ext
-	if ext == "" {
-		ext = "bin"
+	var objectKey string
+	if k := strings.TrimLeft(strings.TrimSpace(file.ObjectKey), "/"); k != "" {
+		objectKey = k
+	} else {
+		ext := file.Ext
+		if ext == "" {
+			ext = "bin"
+		}
+		subdir := gtime.Now().Format("Ymd")
+		name := uuid.New().String() + "." + ext
+		prefix := strings.TrimRight(t.config.Prefix, "/")
+		objectKey = prefix + "/" + subdir + "/" + name
 	}
-
-	// 生成对象 key
-	subdir := gtime.Now().Format("Ymd")
-	name := uuid.New().String() + "." + ext
-	prefix := strings.TrimRight(t.config.Prefix, "/")
-	objectKey := prefix + "/" + subdir + "/" + name
 
 	// 上传
 	reader := bytes.NewReader(file.Data)

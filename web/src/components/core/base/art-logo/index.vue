@@ -21,6 +21,7 @@
 
 <script setup lang="ts">
   import { useSiteStore } from '@/store/modules/site'
+  import { useMediaDisplayUrl } from '@/utils/media-url'
   import defaultLogo from '@imgs/common/logo.webp'
 
   defineOptions({ name: 'ArtLogo' })
@@ -35,6 +36,7 @@
   })
 
   const siteStore = useSiteStore()
-  const logoUrl = computed(() => siteStore.getLogo() || defaultLogo)
+  const resolvedLogo = useMediaDisplayUrl(computed(() => siteStore.getLogo()))
+  const logoUrl = computed(() => resolvedLogo.value || defaultLogo)
   const logoStyle = computed(() => ({ width: `${props.size}px` }))
 </script>

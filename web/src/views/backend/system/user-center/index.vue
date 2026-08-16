@@ -160,6 +160,7 @@
   import { useUserStore } from '@/store/modules/user'
   import { fetchGetUserInfo, fetchUpdateProfile, fetchChangePassword } from '@/api/backend/auth'
   import { adminRequest } from '@/utils/http'
+  import { mediaDisplayUrl, ensureMediaPreviewUrl, uploadStoragePath } from '@/utils/media-url'
   import type { FormInstance, FormRules } from 'element-plus'
   import { ElMessage } from 'element-plus'
 
@@ -176,12 +177,20 @@
   // 真实用户数据
   const profileData = ref<any>({})
 
-  /** 头像显示：有头像用头像，无头像用 DiceBear 字母头像 */
+  /** 头像显示：有头像用 CDN/可访问 URL，无头像用 DiceBear 字母头像 */
   const avatarDisplay = computed(() => {
-    if (profileData.value.avatar) return profileData.value.avatar
+    if (profileData.value.avatar) return mediaDisplayUrl(profileData.value.avatar)
     const name = encodeURIComponent(profileData.value.username || profileData.value.nickname || '?')
     return `https://api.dicebear.com/7.x/initials/svg?seed=${name}&backgroundColor=5a8dee,10b981,ff6b6b,ffab00,03c3ec&fontSize=40`
   })
+
+  watch(
+    () => profileData.value.avatar,
+    (path) => {
+      if (path && !/^https?:\/\//i.test(path)) void ensureMediaPreviewUrl(path)
+    },
+    { immediate: true }
+  )
 
   /** 上传头像 */
   const handleAvatarUpload = async (options: any) => {
@@ -189,19 +198,19 @@
     formData.append('file', options.file)
     try {
       const res: any = await adminRequest.post({ url: '/upload/file', data: formData })
-      const url = res?.fullUrl || res?.url || ''
-      if (!url) {
+      const path = uploadStoragePath(res)
+      if (!path) {
         ElMessage.error('上传失败')
         return
       }
-      // 保存头像到个人资料
+      // 保存头像到个人资料（入库 path，展示走 CDN 解析）
       await fetchUpdateProfile({
         nickname: profileData.value.nickname || profileData.value.username,
-        avatar: url,
+        avatar: path,
         email: profileData.value.email || '',
         gender: profileData.value.gender || 0,
       })
-      profileData.value.avatar = url
+      profileData.value.avatar = path
       ElMessage.success('头像更新成功')
       // 同步到 store
       await loadProfile()

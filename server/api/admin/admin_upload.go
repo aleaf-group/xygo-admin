@@ -26,3 +26,12 @@ type UploadFileReq struct {
 type UploadFileRes struct {
 	*adminin.UploadFileModel
 }
+
+type ResolveMediaUrlReq struct {
+	g.Meta `path:"/admin/upload/resolve-url" method:"get" tags:"AdminUpload" summary:"解析资源 path 为可访问 URL"`
+	adminin.ResolveMediaUrlInp
+}
+
+type ResolveMediaUrlRes struct {
+	*adminin.ResolveMediaUrlModel
+}

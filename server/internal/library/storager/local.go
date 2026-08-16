@@ -12,6 +12,7 @@ package storager
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/gogf/gf/v2/os/gfile"
@@ -46,21 +47,24 @@ func (l *Local) Upload(_ context.Context, file *UploadFile) (*UploadResult, erro
 		ext = "bin"
 	}
 
-	// 日期子目录
-	subdir := gtime.Now().Format("Ymd")
-	// UUID 文件名
-	name := uuid.New().String() + "." + ext
-
-	// 相对路径（存入数据库）：attachment/upload/yyyyMMdd/uuid.ext
-	relPath := strings.TrimRight(l.config.UrlPrefix, "/") + "/" + subdir + "/" + name
-	relPath = strings.ReplaceAll(relPath, `\`, `/`)
-	// 确保以 / 开头
-	if !strings.HasPrefix(relPath, "/") {
-		relPath = "/" + relPath
+	var relPath string
+	var fullPath string
+	if k := strings.TrimLeft(strings.TrimSpace(file.ObjectKey), "/"); k != "" {
+		relPath = "/" + k
+		fullPath = LocalPhysicalPath(relPath)
+	} else {
+		subdir := gtime.Now().Format("Ymd")
+		name := uuid.New().String() + "." + ext
+		relPath = strings.TrimRight(l.config.UrlPrefix, "/") + "/" + subdir + "/" + name
+		relPath = strings.ReplaceAll(relPath, `\`, `/`)
+		if !strings.HasPrefix(relPath, "/") {
+			relPath = "/" + relPath
+		}
+		fullPath = gfile.Join(l.config.BasePath, subdir, name)
 	}
-
-	// 物理路径
-	fullPath := gfile.Join(l.config.BasePath, subdir, name)
+	if fullPath == "" {
+		return nil, fmt.Errorf("invalid object key: %s", file.ObjectKey)
+	}
 	if err := gfile.Mkdir(gfile.Dir(fullPath)); err != nil {
 		return nil, err
 	}

@@ -22,10 +22,12 @@ import (
 	api "xygo/api/admin"
 	"xygo/internal/consts"
 	"xygo/internal/dao"
+	"xygo/internal/library/storager"
 	smsLogic "xygo/internal/logic/sms"
 	"xygo/internal/model/do"
 	"xygo/internal/model/entity"
 	"xygo/internal/model/input/adminin"
+	"xygo/internal/service"
 	"xygo/utility"
 )
 
@@ -163,8 +165,9 @@ func (c *ControllerV1) ConfigSave(ctx context.Context, req *api.ConfigSaveReq) (
 	// 刷新缓存
 	// 无缓存模式，保存后无需清理，后续读取直接查库
 
-	// 通知各模块配置变更（如 sms 分组变更后重置驱动单例）
+	// 通知各模块配置变更（如 sms/oss 分组变更后重置驱动单例）
 	smsLogic.OnConfigChanged(req.Group)
+	storager.OnConfigChanged(req.Group)
 
 	res = &api.ConfigSaveRes{}
 	return
@@ -455,5 +458,25 @@ func (c *ControllerV1) ConfigDelete(ctx context.Context, req *api.ConfigDeleteRe
 	}
 
 	res = &api.ConfigDeleteRes{}
+	return
+}
+
+// OssSyncPreview 预览待迁移本地附件
+func (c *ControllerV1) OssSyncPreview(ctx context.Context, req *api.OssSyncPreviewReq) (res *api.OssSyncPreviewRes, err error) {
+	data, err := service.OssSync().Preview(ctx, &req.OssSyncPreviewInp)
+	if err != nil {
+		return nil, err
+	}
+	res = &api.OssSyncPreviewRes{OssSyncPreviewModel: *data}
+	return
+}
+
+// OssSyncRun 分批同步本地附件到云存储
+func (c *ControllerV1) OssSyncRun(ctx context.Context, req *api.OssSyncRunReq) (res *api.OssSyncRunRes, err error) {
+	data, err := service.OssSync().Run(ctx, &req.OssSyncRunInp)
+	if err != nil {
+		return nil, err
+	}
+	res = &api.OssSyncRunRes{OssSyncRunModel: *data}
 	return
 }

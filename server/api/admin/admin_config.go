@@ -63,3 +63,23 @@ type ConfigDeleteReq struct {
 }
 
 type ConfigDeleteRes struct{}
+
+// ===================== OSS 本地附件迁移 =====================
+
+type OssSyncPreviewReq struct {
+	g.Meta `path:"/admin/config/oss-sync/preview" method:"get" tags:"AdminConfig" summary:"预览待迁移本地附件"`
+	adminin.OssSyncPreviewInp
+}
+
+type OssSyncPreviewRes struct {
+	adminin.OssSyncPreviewModel
+}
+
+type OssSyncRunReq struct {
+	g.Meta `path:"/admin/config/oss-sync/run" method:"post" tags:"AdminConfig" summary:"分批同步本地附件到云存储"`
+	adminin.OssSyncRunInp
+}
+
+type OssSyncRunRes struct {
+	adminin.OssSyncRunModel
+}

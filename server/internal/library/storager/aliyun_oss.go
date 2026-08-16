@@ -57,16 +57,19 @@ func (a *AliyunOSS) DriverName() string {
 
 // Upload 上传文件到阿里云 OSS
 func (a *AliyunOSS) Upload(_ context.Context, file *UploadFile) (*UploadResult, error) {
-	ext := file.Ext
-	if ext == "" {
-		ext = "bin"
+	var objectKey string
+	if k := strings.TrimLeft(strings.TrimSpace(file.ObjectKey), "/"); k != "" {
+		objectKey = k
+	} else {
+		ext := file.Ext
+		if ext == "" {
+			ext = "bin"
+		}
+		subdir := gtime.Now().Format("Ymd")
+		name := uuid.New().String() + "." + ext
+		prefix := strings.TrimRight(a.config.Prefix, "/")
+		objectKey = prefix + "/" + subdir + "/" + name
 	}
-
-	// 生成对象 key: prefix/yyyyMMdd/uuid.ext
-	subdir := gtime.Now().Format("Ymd")
-	name := uuid.New().String() + "." + ext
-	prefix := strings.TrimRight(a.config.Prefix, "/")
-	objectKey := prefix + "/" + subdir + "/" + name
 
 	// 上传
 	reader := bytes.NewReader(file.Data)

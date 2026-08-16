@@ -138,3 +138,49 @@ export const deleteConfigItemApi = (key: string) => {
     data: { key }
   })
 }
+
+/** OSS 本地附件迁移 */
+export interface OssSyncPreview {
+  targetDriver: string
+  targetLabel: string
+  ready: boolean
+  localTotal: number
+  reuploadTotal: number
+  total: number
+  totalBytes: number
+}
+
+export interface OssSyncRunResult {
+  total: number
+  processed: number
+  success: number
+  failed: number
+  skipped: number
+  lastLocalId: number
+  lastReuploadId: number
+  done: boolean
+  failures: Array<{ id: number; name: string; url: string; error: string }>
+}
+
+export const getOssSyncPreviewApi = (targetDriver: string) => {
+  return adminRequest.get<OssSyncPreview>({
+    url: '/config/oss-sync/preview',
+    params: { targetDriver }
+  })
+}
+
+export const runOssSyncApi = (data: {
+  targetDriver: string
+  pageSize?: number
+  deleteLocal?: boolean
+  includeReupload?: boolean
+  lastLocalId?: number
+  lastReuploadId?: number
+  dryRun?: boolean
+}) => {
+  return adminRequest.post<OssSyncRunResult>({
+    url: '/config/oss-sync/run',
+    data,
+    timeout: 120000
+  })
+}

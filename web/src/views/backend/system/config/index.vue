@@ -408,6 +408,13 @@
                 </div>
               </ElFormItem>
             </ElForm>
+
+            <OssSyncMiniCard
+              v-if="ossSyncTabMeta"
+              :key="ossSyncTabMeta.driver"
+              :driver="ossSyncTabMeta.driver"
+              :label="ossSyncTabMeta.label"
+            />
           </div>
 
           <!-- 空状态 -->
@@ -487,6 +494,7 @@ import {
 } from '@/api/backend/system/config'
 import { useClipboard } from '@vueuse/core'
 import AddConfigItemDialog from './components/AddConfigItemDialog.vue'
+import OssSyncMiniCard from './components/OssSyncMiniCard.vue'
 
 const { copy, copied } = useClipboard()
 
@@ -578,6 +586,17 @@ const displaySchemaItems = computed(() => {
 // 切换分组时重置 subTab
 watch(selectedGroup, () => {
   activeSubTab.value = subTabs.value.length ? subTabs.value[0].key : 'general'
+})
+
+const ossCloudTabMeta: Record<string, { driver: string; label: string }> = {
+  aliyun: { driver: 'aliyun-oss', label: '阿里云 OSS' },
+  tencent: { driver: 'tencent-cos', label: '腾讯云 COS' },
+  qiniu: { driver: 'qiniu', label: '七牛云' }
+}
+
+const ossSyncTabMeta = computed(() => {
+  if (selectedGroup.value !== 'oss') return null
+  return ossCloudTabMeta[activeSubTab.value] || null
 })
 
 // 远程搜索选项

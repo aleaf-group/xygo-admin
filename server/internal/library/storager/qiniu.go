@@ -71,16 +71,19 @@ func (q *Qiniu) getZone() *storage.Zone {
 
 // Upload 上传文件到七牛云
 func (q *Qiniu) Upload(_ context.Context, file *UploadFile) (*UploadResult, error) {
-	ext := file.Ext
-	if ext == "" {
-		ext = "bin"
+	var objectKey string
+	if k := strings.TrimLeft(strings.TrimSpace(file.ObjectKey), "/"); k != "" {
+		objectKey = k
+	} else {
+		ext := file.Ext
+		if ext == "" {
+			ext = "bin"
+		}
+		subdir := gtime.Now().Format("Ymd")
+		name := uuid.New().String() + "." + ext
+		prefix := strings.TrimRight(q.config.Prefix, "/")
+		objectKey = prefix + "/" + subdir + "/" + name
 	}
-
-	// 生成对象 key
-	subdir := gtime.Now().Format("Ymd")
-	name := uuid.New().String() + "." + ext
-	prefix := strings.TrimRight(q.config.Prefix, "/")
-	objectKey := prefix + "/" + subdir + "/" + name
 
 	// 生成上传凭证
 	putPolicy := storage.PutPolicy{

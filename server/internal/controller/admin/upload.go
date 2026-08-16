@@ -22,8 +22,8 @@ import (
 
 	api "xygo/api/admin"
 	"xygo/internal/dao"
+	"xygo/internal/library/contexts"
 	"xygo/internal/library/storager"
-	"xygo/internal/library/token"
 	"xygo/internal/logic"
 	"xygo/internal/model/do"
 	"xygo/internal/model/entity"
@@ -106,7 +106,7 @@ func (c *ControllerV1) UploadFile(ctx context.Context, req *api.UploadFileReq) (
 
 	res = new(api.UploadFileRes)
 	res.UploadFileModel = &adminin.UploadFileModel{
-		URL:   uploadResult.FullUrl,
+		URL:   storager.CdnUrl(ctx, drive, uploadResult.RelPath),
 		Path:  uploadResult.RelPath,
 		Size:  int64(len(data)),
 		Mime:  mimeVal,
@@ -114,9 +114,10 @@ func (c *ControllerV1) UploadFile(ctx context.Context, req *api.UploadFileReq) (
 		Drive: drive,
 	}
 
-	// 记录附件表
-	userId := currentUserID(ctx)
-	attachmentId, err := saveAttachmentRecord(ctx, res, upFile.Filename, sha1sum, topic, userId, width, height)
+	// 记录附件表（上传完成后用独立 context，避免网关/客户端超时取消导致落库失败）
+	userId := uint(contexts.GetUserId(ctx))
+	persistCtx := context.WithoutCancel(ctx)
+	attachmentId, err := saveAttachmentRecord(persistCtx, res, upFile.Filename, sha1sum, topic, userId, width, height)
 	if err != nil {
 		g.Log().Warningf(ctx, "保存附件记录失败: %v", err)
 	} else {
@@ -124,6 +125,39 @@ func (c *ControllerV1) UploadFile(ctx context.Context, req *api.UploadFileReq) (
 	}
 
 	return
+}
+
+// ResolveMediaUrl 将库中 object key 解析为浏览器可访问 URL（配置/CMS 预览用）
+func (c *ControllerV1) ResolveMediaUrl(ctx context.Context, req *api.ResolveMediaUrlReq) (res *api.ResolveMediaUrlRes, err error) {
+	rawPaths := make([]string, 0, 4)
+	if p := strings.TrimSpace(req.Path); p != "" {
+		rawPaths = append(rawPaths, p)
+	}
+	if ps := strings.TrimSpace(req.Paths); ps != "" {
+		for _, p := range strings.Split(ps, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				rawPaths = append(rawPaths, p)
+			}
+		}
+	}
+	if len(rawPaths) == 0 {
+		return &api.ResolveMediaUrlRes{ResolveMediaUrlModel: &adminin.ResolveMediaUrlModel{}}, nil
+	}
+
+	list := make(map[string]string, len(rawPaths))
+	for _, p := range rawPaths {
+		key := p
+		if !strings.HasPrefix(key, "/") && !strings.HasPrefix(key, "http") {
+			key = "/" + key
+		}
+		list[p] = storager.CdnUrlByPath(ctx, key)
+	}
+
+	out := &adminin.ResolveMediaUrlModel{List: list}
+	if req.Path != "" && req.Paths == "" {
+		out.URL = list[strings.TrimSpace(req.Path)]
+	}
+	return &api.ResolveMediaUrlRes{ResolveMediaUrlModel: out}, nil
 }
 
 // AttachmentList 附件列表
@@ -167,6 +201,7 @@ func (c *ControllerV1) AttachmentList(ctx context.Context, req *api.AttachmentLi
 			Topic:      it.Topic,
 			UserId:     it.UserId,
 			Url:        it.Url,
+			CdnUrl:     storager.CdnUrl(ctx, it.Storage, it.Url),
 			Name:       it.Name,
 			Size:       it.Size,
 			Mimetype:   it.Mimetype,
@@ -233,27 +268,6 @@ func detectImageSize(data []byte) (w, h int) {
 		return 0, 0
 	}
 	return cfg.Width, cfg.Height
-}
-
-// currentUserID 从 token 获取用户ID（后台管理员）
-func currentUserID(ctx context.Context) uint {
-	r := g.RequestFromCtx(ctx)
-	if r == nil {
-		return 0
-	}
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return 0
-	}
-	tokenStr := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer"))
-	if tokenStr == "" {
-		return 0
-	}
-	authUser, err := token.Parse(ctx, tokenStr)
-	if err != nil || authUser == nil {
-		return 0
-	}
-	return uint(authUser.Id)
 }
 
 // saveLocalFromBytes 将上传文件保存到本地资源目录
@@ -362,7 +376,7 @@ func tryReuseAttachment(ctx context.Context, base, storage, topic, sha1sum strin
 		}).Update()
 	reusedRes := new(api.UploadFileRes)
 	reusedRes.UploadFileModel = &adminin.UploadFileModel{
-		URL:   "/" + urlVal,
+		URL:   storager.CdnUrl(ctx, storage, gconv.String(rec.Url)),
 		Path:  urlVal,
 		Size:  gconv.Int64(rec.Size),
 		Mime:  gconv.String(rec.Mimetype),
@@ -393,10 +407,11 @@ func (c *ControllerV1) AttachmentDelete(ctx context.Context, req *api.Attachment
 	// 删除物理文件（当引用数 <= 1 时）
 	if attachment.Quote <= 1 && attachment.Url != "" {
 		storage := storager.Instance(ctx)
-		if delErr := storage.Delete(ctx, attachment.Url); delErr != nil {
-			g.Log().Warningf(ctx, "[Attachment] delete physical file error: %v, path: %s", delErr, attachment.Url)
+		objectKey := storager.CdnObjectKey(attachment.Storage, attachment.Url)
+		if delErr := storage.Delete(ctx, objectKey); delErr != nil {
+			g.Log().Warningf(ctx, "[Attachment] delete physical file error: %v, path: %s", delErr, objectKey)
 		} else {
-			g.Log().Infof(ctx, "[Attachment] deleted physical file: %s", attachment.Url)
+			g.Log().Infof(ctx, "[Attachment] deleted physical file: %s", objectKey)
 		}
 	}
 

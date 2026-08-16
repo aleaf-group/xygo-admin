@@ -47,6 +47,7 @@ var opLogConfig = operationLogConfig{
 	excludePaths: map[string]bool{
 		"/admin/auth/login":  true, // 登录单独在 LoginLog 记录
 		"/admin/auth/logout": true, // 登出不需要记录操作日志
+		"/admin/upload/file": true, // 文件上传（multipart 二进制，不宜入库）
 	},
 	excludeSuffixes: []string{
 		"/list",   // 列表查询
@@ -105,6 +106,11 @@ func OperationLog(r *ghttp.Request) {
 			requestBody = string(bodyBytes)
 			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
+	}
+	if strings.HasPrefix(strings.ToLower(r.Header.Get("Content-Type")), "multipart/form-data") {
+		requestBody = "[multipart/form-data omitted]"
+	} else if len(requestBody) > 4096 {
+		requestBody = requestBody[:4096] + "...(truncated)"
 	}
 
 	// 获取当前用户信息（AdminAuth 中间件已设置 context）

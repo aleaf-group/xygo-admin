@@ -23,7 +23,7 @@
     <template #reference>
       <img
         class="size-8.5 mr-5 c-p rounded-full max-sm:w-6.5 max-sm:h-6.5 max-sm:mr-[16px]"
-        :src="userInfo.avatar"
+        :src="avatarUrl"
         alt="avatar"
       />
     </template>
@@ -32,7 +32,7 @@
         <div class="flex-c pb-1 px-0">
           <img
             class="w-10 h-10 mr-3 ml-0 overflow-hidden rounded-full float-left"
-            :src="userInfo.avatar"
+            :src="avatarUrl"
           />
           <div class="w-[calc(100%-60px)] h-full">
             <span class="block text-sm font-medium text-g-800 truncate">
@@ -42,7 +42,7 @@
           </div>
         </div>
         <ul class="py-4 mt-3 border-t border-g-300/80">
-          <li class="btn-item" @click="goPage(`${ADMIN_BASE_PATH}/system/user-center`)">
+          <li class="btn-item" @click="goUserCenter">
             <ArtSvgIcon icon="ri:user-3-line" />
             <span>{{ $t('topBar.user.userCenter') }}</span>
           </li>
@@ -71,8 +71,15 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
   import { useRouter } from 'vue-router'
-  import { ElMessageBox } from 'element-plus'
+  import { ElMessageBox, ElMessage } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
+  import { useMenuStore } from '@/store/modules/menu'
+  import { useMediaDisplayUrl } from '@/utils/media-url'
+  import {
+    findMenuPath,
+    USER_CENTER_COMPONENT,
+    USER_CENTER_ROUTE_NAME
+  } from '@/utils/navigation/route'
   import { WEB_LINKS } from '@/utils/constants'
   import { mittBus } from '@/utils/sys'
   import { ADMIN_BASE_PATH } from '@/router/routesAlias'
@@ -82,15 +89,35 @@
   const router = useRouter()
   const { t } = useI18n()
   const userStore = useUserStore()
+  const menuStore = useMenuStore()
 
   const { getUserInfo: userInfo } = storeToRefs(userStore)
+  const avatarUrl = useMediaDisplayUrl(computed(() => userInfo.value.avatar))
   const userMenuPopover = ref()
 
-  /**
-   * 页面跳转
-   * @param {string} path - 目标路径
-   */
-  const goPage = (path: string): void => {
+  /** 个人中心路径：优先路由 name，其次菜单树 component，最后兜底默认路径 */
+  const userCenterPath = computed(() => {
+    if (router.hasRoute(USER_CENTER_ROUTE_NAME)) {
+      const resolved = router.resolve({ name: USER_CENTER_ROUTE_NAME })
+      if (resolved?.path) return resolved.path
+    }
+
+    const fromMenu = findMenuPath(menuStore.menuList, {
+      component: USER_CENTER_COMPONENT,
+      name: USER_CENTER_ROUTE_NAME
+    })
+    if (fromMenu) return fromMenu
+
+    return `${ADMIN_BASE_PATH}/system/user-center`
+  })
+
+  const goUserCenter = (): void => {
+    closeUserMenu()
+    const path = userCenterPath.value
+    if (!path) {
+      ElMessage.warning('未找到个人中心菜单，请检查菜单与权限配置')
+      return
+    }
     router.push(path)
   }
 

@@ -25,11 +25,12 @@ import (
 
 // UploadFile 上传文件信息
 type UploadFile struct {
-	Data     []byte // 文件内容
-	Filename string // 原始文件名
-	Ext      string // 扩展名（不含点，小写）
-	MimeType string // MIME 类型
-	Size     int64  // 文件大小
+	Data      []byte // 文件内容
+	Filename  string // 原始文件名
+	Ext       string // 扩展名（不含点，小写）
+	MimeType  string // MIME 类型
+	Size      int64  // 文件大小
+	ObjectKey string // 指定 object key（迁移历史文件时使用，非空则跳过 UUID 生成）
 }
 
 // UploadResult 上传结果
@@ -118,6 +119,13 @@ func ResetInstance() {
 	once = sync.Once{}
 	instance = nil
 	config = nil
+}
+
+// OnConfigChanged 当 oss 分组配置保存后调用，重置驱动单例与配置缓存
+func OnConfigChanged(group string) {
+	if strings.EqualFold(group, "oss") {
+		ResetInstance()
+	}
 }
 
 // GetConfig 从数据库 sys_config 表（oss 分组）读取存储配置
